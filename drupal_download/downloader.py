@@ -33,6 +33,9 @@ class DrupalDadaDownloader(object):
     Download data from a Drupal REST API endpoint. This specific class assumes that each page carries all the
     information needed for each individual object, so it doesn't need to download anything else.
     """
+
+    ids_sequence = ["cid", "tid", "vid", "nid"]
+
     def __init__(self,
                  base_url: str,
                  username: str,
@@ -67,6 +70,7 @@ class DrupalDadaDownloader(object):
         self.session = requests.Session()
         self.auth = None
         self.seen_objects: Set[int] = set()
+        self.id_name: Optional[str] = None
 
     def get_url(self, url: str) -> requests.Response:
         if self.auth_type == AuthType.HTTPBasic:
@@ -134,9 +138,15 @@ class DrupalDadaDownloader(object):
     def process_object(self, obj):
         self.on_object(obj)
 
-    @staticmethod
-    def get_object_id(node) -> int:
-        return int(node["nid"])
+    def get_object_id(self, obj) -> int:
+        if self.id_name is None:
+            for id_name in self.ids_sequence:
+                if id_name in obj:
+                    self.id_name = id_name
+                    break
+            if self.id_name is None:
+                raise DrupalDownloadException("Unable to find an object id")
+        return int(obj[self.id_name])
 
 
 class Drupal7DadaDownloader(DrupalDadaDownloader):
