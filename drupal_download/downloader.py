@@ -80,8 +80,8 @@ class DrupalDadaDownloader(object):
                 login = dict()
                 login['name'] = self.username
                 login['pass'] = self.password
-                url = self.initial_url.set(path="user").add(dict(_format="json"))
-                response = self.session.post(url.url, data=json.dumps(login))
+                login_url = self.initial_url.set(path="user").add(dict(_format="json"))
+                response = self.session.post(login_url.url, data=json.dumps(login))
                 if not response.ok:
                     raise DrupalDownloadException(f"Failed to login: {response.reason}")
                 self.logged_in = True
