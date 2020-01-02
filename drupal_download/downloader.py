@@ -4,7 +4,7 @@ import json
 from builtins import Exception
 from enum import Enum, auto
 
-from typing import Iterable, Callable, Set
+from typing import Iterable, Callable, Set, Optional
 
 import requests
 from requests.auth import HTTPBasicAuth
@@ -39,7 +39,7 @@ class DrupalDadaDownloader(object):
                  password: str,
                  auth_type: AuthType,
                  on_object: Callable,
-                 page_size = 10,
+                 page_size: Optional[int] = None,
                  skip_duplicates: bool = True):
         """
         Constructor of the class
@@ -104,7 +104,8 @@ class DrupalDadaDownloader(object):
                 url.args["page"] = page
             elif "page" in url.args:
                 del url.args["page"]
-            url.args["pagesize"] = self.page_size
+            if self.page_size is not None:
+                url.args["pagesize"] = self.page_size
             response = self.get_url(url.url)
             if not response.ok:
                 raise DrupalDownloadException(f"Failed to get the data: {response.reason}")
