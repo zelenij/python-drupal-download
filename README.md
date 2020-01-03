@@ -45,6 +45,12 @@ Only Python 3 is supported at the moment.  Let Python 2 die in quiet dignity!
 Currently Drupal 7 and 8 are supported.  In theory this module could work with previous versions of Drupal and it might
 work with some future ones as well.  Your mileage can vary.
 
+### Installation
+
+This package is available on PyPi. Simply use pip to install (assuming you are running in a Python 3 virtual environment):
+
+        pip install drupal_download
+
 ### On a Drupal web site
 
 First, you must enable a JSON-based REST API in Drupal. Follow the correct link for your version of Drupal:
