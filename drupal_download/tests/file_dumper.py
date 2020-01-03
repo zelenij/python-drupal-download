@@ -1,8 +1,9 @@
 import json
-from typing import Dict
+import sys
 
 import datetime as dt
 import configargparse
+import logging
 
 import dateutil.parser as dp
 from furl import furl
@@ -11,6 +12,15 @@ from drupal_download.downloader import AuthType, DrupalDownloadException, Drupal
 
 
 def download_main():
+    logging.getLogger('urllib3').setLevel(logging.INFO)
+    logging.getLogger('requests').setLevel(logging.INFO)
+    log = logging.getLogger('')
+    log.setLevel(logging.DEBUG)
+    format = logging.Formatter("%(asctime)s - %(name)s - %(levelname)-4s - %(message)s")
+    ch = logging.StreamHandler(sys.stdout)
+    ch.setFormatter(format)
+    log.addHandler(ch)
+
     data = list()
 
     def collector(obj):
@@ -32,6 +42,8 @@ def download_main():
                         help='Output file')
     parser.add_argument('--drupal-version', choices=[7, 8], type=int,
                         help='Drupal version')
+    parser.add_argument('--page-size', type=int,
+                        help='Page size')
 
     args = parser.parse_args()
     auth_type = [x for x in AuthType if x.name == args.auth_type][0]
@@ -45,7 +57,7 @@ def download_main():
         downloader = DrupalDadaDownloader
     else:
         raise DrupalDownloadException(f"Unsupported Drupal version {args.drupal_version}")
-    dl = downloader(args.base_url, args.username, args.password, auth_type, collector)
+    dl = downloader(args.base_url, args.username, args.password, auth_type, collector, page_size=args.page_size)
     dl.load_data()
 
     with open(args.output, 'w') as fs:

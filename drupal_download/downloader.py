@@ -6,6 +6,8 @@ from enum import Enum, auto
 
 from typing import Iterable, Callable, Set, Optional
 
+import logging
+
 import requests
 from requests.auth import HTTPBasicAuth
 
@@ -34,6 +36,7 @@ class DrupalDadaDownloader(object):
     information needed for each individual object, so it doesn't need to download anything else.
     """
 
+    logger = logging.getLogger("DrupalDownload")
     ids_sequence = ["cid", "tid", "vid", "nid"]
 
     def __init__(self,
@@ -64,6 +67,9 @@ class DrupalDadaDownloader(object):
         self.page_size = page_size
         self.skip_duplicates = skip_duplicates
 
+        if self.page_size is not None and self.page_size <= 0:
+            raise DrupalDownloadException(f"Page size must be positive or None")
+
         self.objects_count = 0
         self.pages_count = 0
         self.logged_in = False
@@ -81,6 +87,7 @@ class DrupalDadaDownloader(object):
             return self.session.get(url)
         elif self.auth_type == AuthType.CookieSession:
             if not self.logged_in:
+                self.logger.info(f"Not logged in, login into Drupal session for {self.username}")
                 login = dict()
                 login['name'] = self.username
                 login['pass'] = self.password
@@ -102,6 +109,7 @@ class DrupalDadaDownloader(object):
         load_next = True
         page = -1
         url = self.initial_url.copy()
+        self.logger.info(f"Starting data extraction from {self.initial_url}")
         while load_next:
             page += 1
             if page > 0:
@@ -129,8 +137,10 @@ class DrupalDadaDownloader(object):
 
             if len(data) > 0:
                 self.pages_count += 1
+                self.logger.debug(f"Loaded page {page+1} with {count:,} objects on it")
             else:
                 load_next = False
+        self.logger.info(f"Finished data extraction from {self.initial_url}; pages={self.pages_count:,}, objects={self.objects_count:,}")
 
     def page_to_objects(self, page_data) -> Iterable:
         return page_data
