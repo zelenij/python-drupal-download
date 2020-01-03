@@ -7,7 +7,7 @@ def readme():
 
 
 setuptools.setup(name='drupal_download',
-                 version='0.0.2',
+                 version='0.0.3',
                  description='Download data from Drupal using Python',
                  long_description='This python 3 module will help you to extract data from a Drupal 7 or 8 web site. '
                                   'This data can be later used for archiving or for migration to another CMS, '
