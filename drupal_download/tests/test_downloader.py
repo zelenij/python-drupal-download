@@ -5,7 +5,7 @@ import pytest
 import requests
 import requests_mock
 
-from drupal_download.downloader import DrupalDadaDownloader, AuthType
+from drupal_download.downloader import DrupalDadaDownloader, AuthType, Drupal7DadaDownloader, DrupalDownloadException
 
 
 class TestDownloader:
@@ -29,6 +29,14 @@ class TestDownloader:
             dl.load_data()
             assert dl.pages_count == 0
             assert dl.objects_count == 0
+
+    def test_authentication_session_fails(self):
+        with requests_mock.Mocker() as mock:
+            mock.post(self.website + "/user?_format=json", text='', status_code=403)
+
+            dl = DrupalDadaDownloader(self.base_url, "john", "123", AuthType.CookieSession, lambda x: x)
+            with pytest.raises(DrupalDownloadException):
+                dl.load_data()
 
     def test_authentication_basic(self):
         with requests_mock.Mocker() as mock:
@@ -70,6 +78,31 @@ class TestDownloader:
 
             dls = [DrupalDadaDownloader(self.base_url, "john", "123", AuthType.CookieSession, incr),
                    DrupalDadaDownloader(self.base_url, None, None, AuthType.Anonymous, incr)]
+            for dl in dls:
+                count = 0
+                dl.load_data()
+                assert dl.pages_count == 1
+                assert dl.objects_count == 20
+                assert count == 20
+
+    def test_download_drupal7(self):
+        count = 0
+
+        def incr(x):
+            nonlocal count
+            count += 1
+
+        data = [dict(nid=i, uri=self.base_url + f"?node={i}") for i in range(20)]
+        with requests_mock.Mocker() as mock:
+            mock.register_uri('GET', url=self.base_url, text=json.dumps(data), complete_qs=True)
+            mock.register_uri('GET', url=self.base_url + "?page=1", text="[]", complete_qs=True)
+            for node in data:
+                mock.register_uri('GET', url=self.base_url + "?node=" + str(node["nid"]),
+                                  text=json.dumps(node), complete_qs=True)
+            mock.post(self.website + "/user?_format=json", text='')
+
+            dls = [Drupal7DadaDownloader(self.base_url, "john", "123", AuthType.CookieSession, incr),
+                   Drupal7DadaDownloader(self.base_url, None, None, AuthType.Anonymous, incr)]
             for dl in dls:
                 count = 0
                 dl.load_data()

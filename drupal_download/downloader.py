@@ -157,5 +157,8 @@ class Drupal7DadaDownloader(DrupalDadaDownloader):
     """
     def page_to_objects(self, page_data) -> Iterable:
         for obj_data in page_data:
-            obj = self.get_url(obj_data["uri"])
-            yield obj
+            url = obj_data["uri"]
+            response = self.get_url(url)
+            if not response.ok:
+                raise DrupalDownloadException(f"Failed to get the data for node from {url}: {response.reason}")
+            yield response.json()
