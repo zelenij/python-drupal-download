@@ -46,7 +46,8 @@ class DrupalDadaDownloader(object):
                  auth_type: AuthType,
                  on_object: Callable,
                  page_size: Optional[int] = None,
-                 skip_duplicates: bool = True):
+                 skip_duplicates: bool = True,
+                 id_name: Optional[str] = None):
         """
         Constructor of the class
 
@@ -66,6 +67,7 @@ class DrupalDadaDownloader(object):
         self.on_object = on_object
         self.page_size = page_size
         self.skip_duplicates = skip_duplicates
+        self.id_name: Optional[str] = id_name
 
         if self.page_size is not None and self.page_size <= 0:
             raise DrupalDownloadException(f"Page size must be positive or None")
@@ -76,7 +78,6 @@ class DrupalDadaDownloader(object):
         self.session = requests.Session()
         self.auth = None
         self.seen_objects: Set[int] = set()
-        self.id_name: Optional[str] = None
 
     def get_url(self, url: str) -> requests.Response:
         if self.auth_type == AuthType.HTTPBasic:
@@ -91,8 +92,9 @@ class DrupalDadaDownloader(object):
                 login = dict()
                 login['name'] = self.username
                 login['pass'] = self.password
-                login_url = self.initial_url.set(path="user").add(dict(_format="json"))
-                response = self.session.post(login_url.url, data=json.dumps(login))
+                login_url = self.get_login_url()
+                headers = {'Content-type': 'application/json'}
+                response = self.session.post(login_url.url, json=login, headers=headers)
                 if not response.ok:
                     raise DrupalDownloadException(f"Failed to login: {response.reason}")
                 self.logged_in = True
@@ -120,12 +122,12 @@ class DrupalDadaDownloader(object):
                 url.args["pagesize"] = self.page_size
             response = self.get_url(url.url)
             if not response.ok:
-                raise DrupalDownloadException(f"Failed to get the data: {response.reason}")
+                raise DrupalDownloadException(f"Failed to get the data from {url}: {response.reason}")
             data = response.json()
 
             count = 0
             if self.skip_duplicates:
-                filtered_data = [n for n in data if self.get_object_id(n) not in self.seen_objects]
+                filtered_data = self.filter_out_duplicates(data)
             else:
                 filtered_data = data
             for obj in self.page_to_objects(filtered_data):
@@ -137,16 +139,52 @@ class DrupalDadaDownloader(object):
 
             if len(data) > 0:
                 self.pages_count += 1
-                self.logger.debug(f"Loaded page {page+1} with {count:,} objects on it")
+                self.logger.debug(f"Loaded page {page + 1} with {count:,} objects on it")
             else:
                 load_next = False
-        self.logger.info(f"Finished data extraction from {self.initial_url}; pages={self.pages_count:,}, objects={self.objects_count:,}")
+        self.logger.info(
+            f"Finished data extraction from {self.initial_url}; pages={self.pages_count:,}, objects={self.objects_count:,}")
 
     def page_to_objects(self, page_data) -> Iterable:
-        return page_data
+        pass
 
     def process_object(self, obj):
         self.on_object(obj)
+
+    def get_object_id(self, obj) -> int:
+        pass
+
+    def get_login_url(self) -> furl:
+        pass
+
+    def page_to_objects_list(self, page_data) -> Iterable:
+        for obj_data in page_data:
+            url = obj_data["uri"]
+            response = self.get_url(url)
+            if not response.ok:
+                raise DrupalDownloadException(f"Failed to get the data for node from {url}: {response.reason}")
+            yield response.json()
+
+    def filter_out_duplicates(self, data) -> Iterable:
+        pass
+
+
+class Drupal7DadaDownloader(DrupalDadaDownloader):
+    """
+    A refinement of the downloader class, applicable to the standard service REST APIs in Drupal. This module
+    implementation provides only basic data on the index page. To get full data, this class uses the provided uri
+    attribute for each individual object.
+    """
+
+    def page_to_objects(self, page_data) -> Iterable:
+        return self.page_to_objects_list(page_data)
+
+    def get_login_url(self):
+        res = self.initial_url.copy().set(path="user")
+        if "_format" not in res.args:
+            return res.add(dict(_format="json"))
+        else:
+            return res
 
     def get_object_id(self, obj) -> int:
         if self.id_name is None:
@@ -158,17 +196,41 @@ class DrupalDadaDownloader(object):
                 raise DrupalDownloadException("Unable to find an object id")
         return int(obj[self.id_name])
 
+    def filter_out_duplicates(self, data) -> Iterable:
+        return [n for n in data if self.get_object_id(n) not in self.seen_objects]
 
-class Drupal7DadaDownloader(DrupalDadaDownloader):
+
+class Drupal8DadaDownloader(DrupalDadaDownloader):
     """
-    A refinement of the downloader class, applicable to the standard service REST APIs in Drupal 7. Their default
+    A refinement of the downloader class, applicable to the standard service REST APIs in Drupal. This module
     implementation provides only basic data on the index page. To get full data, this class uses the provided uri
     attribute for each individual object.
     """
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        if self.id_name is None:
+            raise DrupalDownloadException("id_name is mandatory for Drupal 8")
+
     def page_to_objects(self, page_data) -> Iterable:
-        for obj_data in page_data:
-            url = obj_data["uri"]
-            response = self.get_url(url)
-            if not response.ok:
-                raise DrupalDownloadException(f"Failed to get the data for node from {url}: {response.reason}")
-            yield response.json()
+        objects = [{'uri': self.initial_url.copy().add(path=str(k)).url, self.id_name: k}
+                   for k in page_data.keys()]
+        return self.page_to_objects_list(objects)
+
+    def get_login_url(self):
+        res = self.initial_url.copy().set(path="user/login")
+        if "_format" in res.args:
+            del res.args["_format"]
+        return res.add(dict(_format="json"))
+
+    def get_object_id(self, obj) -> int:
+        res = obj[self.id_name]
+        if isinstance(res, list):
+            res = res[0]["value"]
+        return int(res)
+
+    def filter_out_duplicates(self, data) -> Iterable:
+        for key in list(data.keys()):
+            if int(key) in self.seen_objects:
+                del data[key]
+        return data

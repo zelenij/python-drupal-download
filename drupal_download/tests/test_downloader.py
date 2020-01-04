@@ -5,7 +5,7 @@ import pytest
 import requests
 import requests_mock
 
-from drupal_download.downloader import DrupalDadaDownloader, AuthType, Drupal7DadaDownloader, DrupalDownloadException
+from drupal_download.downloader import AuthType, DrupalDownloadException, Drupal7DadaDownloader, Drupal8DadaDownloader
 
 
 class TestDownloader:
@@ -15,7 +15,7 @@ class TestDownloader:
     def test_authentication_anonymous(self):
         with requests_mock.Mocker() as mock:
             mock.get(self.base_url, text='[]')
-            dl = DrupalDadaDownloader(self.base_url, None, None, AuthType.Anonymous, lambda x: x)
+            dl = Drupal7DadaDownloader(self.base_url, None, None, AuthType.Anonymous, lambda x: x)
             dl.load_data()
             assert dl.pages_count == 0
             assert dl.objects_count == 0
@@ -25,7 +25,7 @@ class TestDownloader:
             mock.get(self.base_url, text='[]')
             mock.post(self.website + "/user?_format=json", text='')
 
-            dl = DrupalDadaDownloader(self.base_url, "john", "123", AuthType.CookieSession, lambda x: x)
+            dl = Drupal7DadaDownloader(self.base_url, "john", "123", AuthType.CookieSession, lambda x: x)
             dl.load_data()
             assert dl.pages_count == 0
             assert dl.objects_count == 0
@@ -34,7 +34,7 @@ class TestDownloader:
         with requests_mock.Mocker() as mock:
             mock.post(self.website + "/user?_format=json", text='', status_code=403)
 
-            dl = DrupalDadaDownloader(self.base_url, "john", "123", AuthType.CookieSession, lambda x: x)
+            dl = Drupal7DadaDownloader(self.base_url, "john", "123", AuthType.CookieSession, lambda x: x)
             with pytest.raises(DrupalDownloadException):
                 dl.load_data()
 
@@ -42,13 +42,13 @@ class TestDownloader:
         with requests_mock.Mocker() as mock:
             mock.get(self.base_url, text='[]')
 
-            dl = DrupalDadaDownloader(self.base_url, "john", "123", AuthType.HTTPBasic, lambda x: x)
+            dl = Drupal7DadaDownloader(self.base_url, "john", "123", AuthType.HTTPBasic, lambda x: x)
             dl.load_data()
             assert dl.pages_count == 0
             assert dl.objects_count == 0
 
     def validate_object_id(self, data: Dict, expected: int):
-        dl = DrupalDadaDownloader(self.base_url, None, None, AuthType.Anonymous, None)
+        dl = Drupal7DadaDownloader(self.base_url, None, None, AuthType.Anonymous, None)
         assert dl.get_object_id(data) == expected
 
     def test_get_object_id(self):
@@ -58,7 +58,7 @@ class TestDownloader:
         self.validate_object_id(dict(xxtid="2", nid="30"), 30)
 
     def test_get_object_id_captures_id_name(self):
-        dl = DrupalDadaDownloader(self.base_url, None, None, AuthType.Anonymous, None)
+        dl = Drupal7DadaDownloader(self.base_url, None, None, AuthType.Anonymous, None)
         data = dict(cid="2", nid="30")
         assert dl.get_object_id(data) == 2
         assert dl.get_object_id(dict(cid=70)) == 70
@@ -76,8 +76,8 @@ class TestDownloader:
             mock.register_uri('GET', url=self.base_url + "?page=1", text="[]", complete_qs=True)
             mock.post(self.website + "/user?_format=json", text='')
 
-            dls = [DrupalDadaDownloader(self.base_url, "john", "123", AuthType.CookieSession, incr),
-                   DrupalDadaDownloader(self.base_url, None, None, AuthType.Anonymous, incr)]
+            dls = [Drupal7DadaDownloader(self.base_url, "john", "123", AuthType.CookieSession, incr),
+                   Drupal8DadaDownloader(self.base_url, None, None, AuthType.Anonymous, incr)]
             for dl in dls:
                 count = 0
                 dl.load_data()
@@ -101,7 +101,7 @@ class TestDownloader:
                                   text=json.dumps(node), complete_qs=True)
             mock.post(self.website + "/user?_format=json", text='')
 
-            dls = [Drupal7DadaDownloader(self.base_url, "john", "123", AuthType.CookieSession, incr),
+            dls = [Drupal8DadaDownloader(self.base_url, "john", "123", AuthType.CookieSession, incr),
                    Drupal7DadaDownloader(self.base_url, None, None, AuthType.Anonymous, incr)]
             for dl in dls:
                 count = 0

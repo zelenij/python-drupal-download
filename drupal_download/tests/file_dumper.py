@@ -8,7 +8,7 @@ import logging
 import dateutil.parser as dp
 from furl import furl
 
-from drupal_download.downloader import AuthType, DrupalDownloadException, DrupalDadaDownloader, Drupal7DadaDownloader
+from drupal_download.downloader import AuthType, DrupalDownloadException, Drupal7DadaDownloader, Drupal8DadaDownloader
 
 
 def download_main():
@@ -44,6 +44,8 @@ def download_main():
                         help='Drupal version')
     parser.add_argument('--page-size', type=int,
                         help='Page size')
+    parser.add_argument('--id-name', required=False,
+                        help='ID name of the data being downloaded. For node it will be nid, for comment cid etc.')
 
     args = parser.parse_args()
     auth_type = [x for x in AuthType if x.name == args.auth_type][0]
@@ -54,10 +56,16 @@ def download_main():
     if args.drupal_version == 7:
         downloader = Drupal7DadaDownloader
     elif args.drupal_version == 8:
-        downloader = DrupalDadaDownloader
+        downloader = Drupal8DadaDownloader
     else:
         raise DrupalDownloadException(f"Unsupported Drupal version {args.drupal_version}")
-    dl = downloader(args.base_url, args.username, args.password, auth_type, collector, page_size=args.page_size)
+    dl = downloader(args.base_url,
+                    args.username,
+                    args.password,
+                    auth_type,
+                    collector,
+                    page_size=args.page_size,
+                    id_name=args.id_name)
     dl.load_data()
 
     with open(args.output, 'w') as fs:
