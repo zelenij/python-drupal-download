@@ -93,7 +93,7 @@ the module supports these methods:
 -  Session - cookie-driven authentication, the same in fact, that you
    use when accessing a Drupal site interactively
 
-*NB:* I very strongly recommend using HTTPS for all these
+**NB:** I very strongly recommend using HTTPS for all these
 communications. If you don’t have an SSL certificate yet and can’t
 afford one, get one for free from
 `Letsencrypt <https://letsencrypt.org/>`__.
@@ -113,8 +113,8 @@ the services module.  In particular, services exposes an index view of, say, nod
 bones information about each node.  It also has a link to the view with the full details, which the module follows.
 Drupal 8 RESTful API on the other hand can export all the fields in the main view.  Read more about it
 `here <https://www.drupal.org/docs/8/api/restful-web-services-api/restful-web-services-api-overview>`__.  Note, that the
-half cooked Drupal 8 services port causes the built in RESTful API to break somehow, if enabled.  Also, for faster
-downloads you are advised to use larger page sizes.
+half cooked Drupal 8 services port causes the built in RESTful API to break somehow, if enabled.  For faster downloads
+you are advised to use larger page sizes in the view configuration.
 
 In a script
 ~~~~~~~~~~~
@@ -144,5 +144,6 @@ This will display some help information. Calling it like this:
 
 ::
 
-       python3 -m download_drupal -b https://www.example.com/export/$i.json --username jane --password secret --auth-type CookieSession -o example_node.json --drupal-version 7
+       python3 -m download_drupal -b https://www.example.com/export/node.json --username jane --password secret --auth-type CookieSession -o example_node.json --drupal-version 7
        
+will download all nodes from a Drupal 7 website.
