@@ -123,6 +123,8 @@ class DrupalDadaDownloader(object):
             response = self.get_url(url.url)
             if not response.ok:
                 raise DrupalDownloadException(f"Failed to get the data from {url}: {response.reason}")
+            if response.encoding is None:
+                response.encoding = "utf-8"
             data = response.json()
 
             count = 0
@@ -166,7 +168,7 @@ class DrupalDadaDownloader(object):
             yield response.json()
 
     def filter_out_duplicates(self, data) -> Iterable:
-        pass
+        return [n for n in data if self.get_object_id(n) not in self.seen_objects]
 
 
 class Drupal7DadaDownloader(DrupalDadaDownloader):
@@ -196,15 +198,11 @@ class Drupal7DadaDownloader(DrupalDadaDownloader):
                 raise DrupalDownloadException("Unable to find an object id")
         return int(obj[self.id_name])
 
-    def filter_out_duplicates(self, data) -> Iterable:
-        return [n for n in data if self.get_object_id(n) not in self.seen_objects]
-
 
 class Drupal8DadaDownloader(DrupalDadaDownloader):
     """
-    A refinement of the downloader class, applicable to the standard service REST APIs in Drupal. This module
-    implementation provides only basic data on the index page. To get full data, this class uses the provided uri
-    attribute for each individual object.
+    A refinement of the downloader class, applicable to Drupal 8. In this version you must use the built in REST
+    services, which will expose all the data on one page, without the need to refer to additional resources.
     """
 
     def __init__(self, *args, **kwargs):
@@ -213,9 +211,7 @@ class Drupal8DadaDownloader(DrupalDadaDownloader):
             raise DrupalDownloadException("id_name is mandatory for Drupal 8")
 
     def page_to_objects(self, page_data) -> Iterable:
-        objects = [{'uri': self.initial_url.copy().add(path=str(k)).url, self.id_name: k}
-                   for k in page_data.keys()]
-        return self.page_to_objects_list(objects)
+        return page_data
 
     def get_login_url(self):
         res = self.initial_url.copy().set(path="user/login")
@@ -228,9 +224,3 @@ class Drupal8DadaDownloader(DrupalDadaDownloader):
         if isinstance(res, list):
             res = res[0]["value"]
         return int(res)
-
-    def filter_out_duplicates(self, data) -> Iterable:
-        for key in list(data.keys()):
-            if int(key) in self.seen_objects:
-                del data[key]
-        return data

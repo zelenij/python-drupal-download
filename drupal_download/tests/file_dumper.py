@@ -1,5 +1,6 @@
 import json
 import sys
+import io
 
 import datetime as dt
 import configargparse
@@ -68,5 +69,5 @@ def download_main():
                     id_name=args.id_name)
     dl.load_data()
 
-    with open(args.output, 'w') as fs:
-        json.dump(data, fs, indent=4)
+    with io.open(args.output, 'w', encoding='utf-8') as fs:
+        json.dump(data, fs, ensure_ascii=False, indent=4)
