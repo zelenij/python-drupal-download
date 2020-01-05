@@ -1,7 +1,6 @@
 import setuptools
 
 
-
 def readme():
     with open('README.rst') as f:
         return f.read()
