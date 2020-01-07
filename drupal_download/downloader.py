@@ -4,7 +4,7 @@ import json
 from builtins import Exception
 from enum import Enum, auto
 
-from typing import Iterable, Callable, Set, Optional
+from typing import Iterable, Callable, Set, Optional, Dict
 
 import logging
 
@@ -37,7 +37,6 @@ class DrupalDadaDownloader(object):
     """
 
     logger = logging.getLogger("DrupalDownload")
-    ids_sequence = ["cid", "tid", "vid", "nid"]
 
     def __init__(self,
                  base_url: str,
@@ -159,14 +158,6 @@ class DrupalDadaDownloader(object):
     def get_login_url(self) -> furl:
         pass
 
-    def page_to_objects_list(self, page_data) -> Iterable:
-        for obj_data in page_data:
-            url = obj_data["uri"]
-            response = self.get_url(url)
-            if not response.ok:
-                raise DrupalDownloadException(f"Failed to get the data for node from {url}: {response.reason}")
-            yield response.json()
-
     def filter_out_duplicates(self, data) -> Iterable:
         return [n for n in data if self.get_object_id(n) not in self.seen_objects]
 
@@ -177,6 +168,16 @@ class Drupal7DadaDownloader(DrupalDadaDownloader):
     implementation provides only basic data on the index page. To get full data, this class uses the provided uri
     attribute for each individual object.
     """
+
+    ids_sequence = ["cid", "tid", "vid", "nid"]
+
+    def page_to_objects_list(self, page_data) -> Iterable:
+        for obj_data in page_data:
+            url = obj_data["uri"]
+            response = self.get_url(url)
+            if not response.ok:
+                raise DrupalDownloadException(f"Failed to get the data for node from {url}: {response.reason}")
+            yield response.json()
 
     def page_to_objects(self, page_data) -> Iterable:
         return self.page_to_objects_list(page_data)
@@ -211,7 +212,20 @@ class Drupal8DadaDownloader(DrupalDadaDownloader):
             raise DrupalDownloadException("id_name is mandatory for Drupal 8")
 
     def page_to_objects(self, page_data) -> Iterable:
-        return page_data
+        for obj in  page_data:
+            yield self.simplify_object(obj)
+
+    def simplify_object(self, obj: Dict) -> Dict:
+        for key, val in list(obj.items()):
+            if isinstance(val, list):
+                if len(val) == 1:
+                    val = val[0]
+                    if isinstance(val, dict) and len(val) == 1:
+                        val = next(iter(val.values()))
+                    obj[key] = val
+                elif len(val) == 0:
+                    obj[key] = None
+        return obj
 
     def get_login_url(self):
         res = self.initial_url.copy().set(path="user/login")
