@@ -170,3 +170,15 @@ arguments:
                 -b "https://${SITE}/export/${endpoint}.json" \
                 --drupal-version 7
         done
+
+
+Author
+======
+
+Written by `Andre Bar'yudin <https://www.baryudin.com>`__.
+
+
+License
+=======
+
+MIT License
