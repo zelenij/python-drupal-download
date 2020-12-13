@@ -137,13 +137,13 @@ module. You can invoke it like this:
 
 ::
 
-       python3 -m download_drupal --help
+       python3 -m drupal_download --help
        
 
 This will display some help information. Calling it like this:
 
 ::
 
-       python3 -m download_drupal -b https://www.example.com/export/node.json --username jane --password secret --auth-type CookieSession -o example_node.json --drupal-version 7
+       python3 -m drupal_download -b https://www.example.com/export/node.json --username jane --password secret --auth-type CookieSession -o example_node.json --drupal-version 7
        
 will download all nodes from a Drupal 7 website.

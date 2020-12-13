@@ -177,6 +177,12 @@ class Drupal7DadaDownloader(DrupalDadaDownloader):
             response = self.get_url(url)
             if not response.ok:
                 raise DrupalDownloadException(f"Failed to get the data for node from {url}: {response.reason}")
+            if 'Content-Type' in response.headers:
+                content_type = response.headers['Content-Type']
+                if content_type is not None and "json" not in content_type.lower():
+                    raise DrupalDownloadException(f"Content type is likely not JSON: " + content_type)
+            if response.content.startswith(b'<?xml version="1.0"'):
+                raise DrupalDownloadException(f"Content type is likely XML and not JSON")
             yield response.json()
 
     def page_to_objects(self, page_data) -> Iterable:
