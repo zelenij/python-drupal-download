@@ -147,3 +147,26 @@ This will display some help information. Calling it like this:
        python3 -m drupal_download -b https://www.example.com/export/node.json --username jane --password secret --auth-type CookieSession -o example_node.json --drupal-version 7
        
 will download all nodes from a Drupal 7 website.
+
+This sample script will download all the data from a Drupal web site, when invoked with <site> <user> <password>
+arguments:
+
+::
+
+        #!/usr/bin/env bash
+
+        set -o errexit
+
+        SITE=$1
+        USER=$2
+        PASSWORD=$3
+
+        for endpoint in node comment taxonomy_term taxonomy_vocabulary; do
+            echo "Fetching ${endpoint} from ${SITE}"
+            python3 -m drupal_download \
+                --auth-type CookieSession \
+                --username "${USER}" --password "${PASSWORD}" \
+                -o ${SITE}_${endpoint}.json \
+                -b "https://${SITE}/export/${endpoint}.json" \
+                --drupal-version 7
+        done
